@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title></title>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8">
+    <meta name="robots" content="noarchive">
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.1.8/css/dataTables.dataTables.css" />
+    <script src="https://code.jquery.com/jquery-3.7.1.js" integrity="sha256-eKhayi8LEQwp4NKxN+CfCh+3qOVUtJn3QNZ0TciWLP4=" crossorigin="anonymous"></script>
+    <link href="json_viewer/jquery.json-viewer.css" type="text/css" rel="stylesheet">
+    <script src="json_viewer/jquery.json-viewer.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/ace-builds@1.36.3/src/ace.js" type="text/javascript" charset="utf-8"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ace-builds@1.36.3/src-noconflict/theme-tomorrow_night.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/ace-builds@1.36.3/css/ace.min.css" rel="stylesheet">
+
+    <style>
+        .console-log-div {
+            width: 95% !important;
+            background-color: #efefef;
+        }
+
+        #log {
+            margin: 10px 0px;
+            display: block;
+            white-space: pre;
+            font-family: monospace;
+        }
+
+        #log:before {
+            content: "Console Log:";
+            font-style: italic;
+            color: #555;
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <div>
+        <pre>[ Object Browser | <a href="./editor/index.html">Editor</a> ]</pre>
+    </div>
+
+    <table style="width: 100%">
+        <tr>
+            <td><pre>[ <a href="https://wolf-b-dev-ed.develop.lightning.force.com">XYZ</a> ] | [<a href="#" onclick="clearconsole(); return false;">ABC</a>]</pre></td>
+        </tr>
+        <tr>
+            <td style="text-align: left; width: 100px; border: 1px solid black;" id="localheartbeat"></td>
+            <td><pre></pre></td>
+            <td style="text-align: left;     border: 1px solid black;">
+                <div id="log"></div>
+            </td>
+        </tr>
+        <tr>
+            <td style="text-align: left; width: 100px; border: 1px solid black;" id="heartbeat"></td>
+        </tr>
+    </table>
+    <table>
+        <tr>
+            <td><pre>bWljaGFlbGJyYWRmaWVsZEBwcm90b24ubWUuZGV2</pre></td>
+            <td>
+                <input type="text" id="input_txtA"></input>
+            </td>
+            <td><pre>[ <a href="#" onclick="myFuncA(); return false;">ASDF</a> ]</pre></td>
+            <td>
+                <div id="messagesA" style="white-space:pre;"></div>
+            </td>
+        </tr>
+    </table>
+
+    <table>
+        <tr>
+            <td><pre>UGFzc1dvcmQxMjM0IQ==</pre></td>
+            <td>
+                <input type="text" id="input_txtB"></input>
+            </td>
+            <td><pre>[ <a href="#" onclick="myFuncB(); return false;">ASDF</a> ]</pre></td>
+            <td>
+                <div id="messagesB" style="white-space:pre;"></div>
+            </td>
+        </tr>
+    </table>
+
+    <table>
+        <tr>
+            <td>
+                <input type="text" id="key" style="font-family: " Courier New ", Courier, monospace;"></input>
+            </td>
+            <td><pre>[ <a href="#" onclick="retrieve(); return false;">ZXC</a> ]</pre></td>
+        </tr>
+    </table>
+
+    <table>
+        <tr>
+            <td>
+                <input type="text" id="idkey" style="font-family: " Courier New ", Courier, monospace;"></input>
+            </td>
+            <td><pre>[ <a href="#" onclick='setitem(document.getElementById("idkey").value); return false;'>ABC</a> ]</pre></td>
+        </tr>
+        <tr>
+            <td><pre>[ <a href="#" onclick='downloadFlatFile(); return false;'>ABC</a> ]</pre></td>
+        </tr>
+    </table>
+
+    <div>
+        <div style="display: flex;">
+            <div style="flex: 50%;">
+                <pre id="json-renderer"></pre>
+            </div>
+
+            <div style="flex: 50%; height: 100%;">
+                <pre id="json-editor"></pre>
+            </div>
+        </div>
+        <div style="display: flex;">
+            <div style="flex: 50%;">
+                <pre></pre>
+            </div>
+
+            <div style="flex: 50%;">
+                <pre>[ <a href="#" onclick='resetObject(document.getElementById("idkey").value); return false;'>XXX</a> ] | [ <a href="#" onclick='saveObject(document.getElementById("idkey").value); return false;'>YYY</a> ]</pre>
+            </div>
+        </div>
+    </div>
+
+    <table id="myTable" class="display" width="100%" style='font-family:"Courier New", Courier, monospace; white-space: pre-line; font-family: monospace;'></table>
+
+    <script src="https://cdn.datatables.net/2.1.8/js/dataTables.js"></script>
+
+    <script>
+        (function (window) {
+          window.utils = {
+            parseQueryString(str) {
+              const ret = Object.create(null);
+        
+              if (typeof str !== 'string') {
+                return ret;
+              }
+        
+              str = str.trim().replace(/^(\?|#|&)/, '');
+        
+              if (!str) {
+                return ret;
+              }
+        
+              str.split('&').forEach((param) => {
+                const parts = param.replace(/\+/g, ' ').split('=');
+                // Firefox (pre 40) decodes `%3D` to `=`
+                // https://github.com/sindresorhus/query-string/pull/37
+                let key = parts.shift();
+                let val = parts.length > 0 ? parts.join('=') : undefined;
+        
+                key = decodeURIComponent(key);
+        
+                // missing `=` should be `null`:
+                // http://w3.org/TR/2012/WD-url-20120524/#collect-url-parameters
+                val = val === undefined ? null : decodeURIComponent(val);
+        
+                if (ret[key] === undefined) {
+                  ret[key] = val;
+                } else if (Array.isArray(ret[key])) {
+                  ret[key].push(val);
+                } else {
+                  ret[key] = [ret[key], val];
+                }
+              });
+        
+              return ret;
+            },
+          };
+        }(window));
+    </script>
+
+    <script src="utility.js"></script>
+
+    <script>
+
+        /*
+            document.getElementById("idkey").value = id;
+            $('#json-renderer').jsonViewer(e);
+            editor.session.setValue(JSON.stringify(e, null, '    '));
+        */
+
+        console.log('commence script execution');
+    
+        var netstate = 'ping';
+
+        (function() {
+            console.log('modifying console');
+
+            if (typeof console  != "undefined") 
+            if (typeof console.log != 'undefined')
+                console.olog = console.log;
+            else
+                console.olog = function() {};
+        
+            console.log = function(message) {
+                console.olog(message);
+        
+                function pad2(n) { return n < 10 ? '0' + n : n }
+        
+                var date = new Date();
+        
+                date = date.getFullYear().toString() + pad2(date.getMonth() + 1) + pad2( date.getDate()) + pad2( date.getHours() ) + pad2( date.getMinutes() ) + pad2( date.getSeconds() );
+        
+                $('#log').append('<pre>'+date+' | ' + message + '</pre>');
+
+            };
+            
+            console.error = console.debug = console.info =  console.log
+
+        })();
+
+        (function() {
+            console.log('setting up local heart beat');
+
+            let element = document.getElementById("localheartbeat");
+            let tag = 'ping';
+
+            if ( element ) {
+                setInterval(function() {
+                    element.innerHTML = ( tag = (tag == 'ping' ? 'pong' : 'ping') );
+                }, 1000);        
+            }
+        })();
+
+        (function() {
+            console.log('setting up internet heart beat');
+
+            let element = document.getElementById("heartbeat");
+
+            if ( element ) {
+                setInterval(async function() {
+                    let res = await getping(netstate);
+                    netstate = res;
+                    element.innerHTML = netstate;
+                }, 1000);        
+            }
+
+        })();
+    
+        (function() {
+            document.addEventListener('keydown', e => {
+                if (e.ctrlKey && e.key === 's') {
+                    // Prevent the Save dialog to open
+                    e.preventDefault();
+
+                    // Place your code here
+                    // console.log('CTRL + S');
+                }
+            });
+
+        })();
+
+        function newObject() {
+            let objid = generate_uuidv4();
+            let obj = {};
+            document.getElementById("idkey").value = objid;
+
+            $('#json-renderer').jsonViewer(obj);
+
+            editor.session.setValue(JSON.stringify(obj, null, '    '));
+        }
+
+        function clearconsole() {
+            document.getElementById("log").innerHTML = '';
+        }
+
+        async function getping(state) {
+
+            return new Promise(function (resolve, reject) {
+                let xhr = new XMLHttpRequest();
+                xhr.open("GET", "https://testdev2375.azurewebsites.net/api/pingpong?name="+state);
+                xhr.setRequestHeader("Accept", "*/*");
+                xhr.setRequestHeader("Content-Type", "application/json");
+                xhr.setRequestHeader("x-functions-key","81EZo5FLxvAJk28B9JVzMKSbGCzJbPMd1_9KPEojlagzAzFu3TcHOg==");
+        
+                xhr.onreadystatechange = function () {
+
+                    let business = function () {
+                        res = xhr.responseText;
+        
+                        resolve(xhr.responseText);
+                    }
+        
+                    if (xhr.readyState === 4) {
+                        business();
+                    }
+        
+                };
+
+                xhr.onload = function () {
+                    if (this.status >= 200 && this.status < 300) {
+                        resolve(xhr.response);
+                    } else {
+                        reject({
+                            status: this.status,
+                            statusText: xhr.statusText
+                        });
+                    }
+                };
+
+                xhr.send();
+
+            });
+        }
+
+        const resetObject = (id) => {
+            console.log('resetObject: id: '+id)
+            setitem(id);
+        }
+    
+        async function saveObject(id) {
+            var text = editor.getSession().getValue();
+
+            try {
+                let obj = JSON.parse(text);
+            } catch (e) {
+                console.log('saveObject: exception: '+e.toString());
+                throw new Error('could not parse text to JSON object');
+            }
+
+            console.log('saveObject: '+text.length+' chars');
+
+            await uploadObject(id, text);
+        }
+    
+        const downloadFlatFile = () => {
+            
+            let content = [];
+              
+            ['acctsList','ctcsList','cardsList'].forEach((db) => {
+            
+                let ddata = data[db];
+            
+                ddata.forEach(e => { content.push(e); } );
+            
+            });
+    
+            content = JSON.stringify(content, null, '    ');
+            
+            const link = document.createElement("a");
+            const file = new Blob([content], { type: 'text/plain' });
+            link.href = URL.createObjectURL(file);
+            link.download = "full_snapshot.json";
+            link.click();
+            URL.revokeObjectURL(link.href);
+            
+        };
+          
+        var editor = ace.edit("json-editor", {
+            theme: "ace/theme/tomorrow_night_eighties",
+            mode: "ace/mode/json",
+            maxLines: Infinity, // 30,
+            wrap: true,
+            autoScrollEditorIntoView: true
+        });
+    
+    
+        var dataJsonViewer = {
+          "foobar": "foobaz"
+        };
+        
+        $('#json-renderer').jsonViewer(dataJsonViewer);
+        
+        var data = {};
+        var acctsList = {};
+        var ctcsList = {};
+        var cardsList = {};
+        var table = null;
+    
+        var inputA = document.querySelector('#input_txtA');
+    
+        var messagesA = document.querySelector('#messagesA');
+    
+        inputA.addEventListener('input', function()
+        {
+            messagesA.textContent = atob(inputA.value);
+        });
+    
+        var inputB = document.querySelector('#input_txtB');
+    
+        var messagesB = document.querySelector('#messagesB');
+    
+        inputB.addEventListener('input', function()
+        {
+            messagesB.textContent = atob(inputB.value);
+        });
+    
+        function myFuncA() {
+            navigator.clipboard.writeText(messagesA.innerText);
+        }
+    
+        function myFuncB() {
+            navigator.clipboard.writeText(messagesB.innerText);
+        }
+    
+        function setdata(d) {
+            
+            let res = d;
+            let columns = [];
+            let dataIn = [];
+            
+            for ( let i = 0; i<res.length; i++) {
+                let item = res[i];
+                let keys = Object.keys(item);
+                columns = columns.concat(keys);
+            }
+            
+            columns = Array.from(new Set(columns));
+            
+            let attsindex = columns.indexOf('attributes');
+            
+            if (attsindex > -1) {
+                columns.splice(attsindex, 1);
+            }
+            
+            attsindex = columns.indexOf('Description');
+            
+            if (attsindex > -1) {
+                columns.splice(attsindex, 1);
+            }
+    
+            for ( let i = 0; i<res.length; i++) {
+                let item = res[i];
+                
+                let newitem = [];
+                
+                let id = '';
+
+                for ( let j = 0; j<columns.length; j++) {
+        
+                    let key = columns[j];
+                    
+                    if ( item.hasOwnProperty(key) ) {
+                        
+                        if ( ((key||'')+'').toLowerCase() === "id" )
+                            id = item[key];
+
+                        if ( key === 'RecordType' ) // this never happens in data
+                            newitem.push(item[key]['Name']);
+                        else
+                            newitem.push(item[key]);
+                    }
+                    else
+                        newitem.push('');
+                    
+                }
+            
+                // await uploadObject(id, JSON.stringify(newitem)); // DELETE ME
+
+                dataIn.push(newitem);
+            }
+            
+            let _cols = [];
+            columns.forEach((e) => {
+                let coldef = { title:e };
+                
+                if ( e === 'Id' || e === 'Contact__c' || e === 'Card__c' ) {
+                    coldef['render'] = function (data, type, row, meta) {
+                        return '<a href="#" onclick="setitem(\''+data+'\'); return false;">'+data+'</a>';
+                    }
+                }
+                
+                _cols.push(coldef);
+            });
+            
+            columns=_cols;
+    
+            if ( $.fn.dataTable.isDataTable( '#myTable' ) ) {
+                $('#myTable').DataTable().destroy();
+                $('#myTable').empty();
+            }
+    
+            var dt = new DataTable('#myTable', {
+                columns: columns,
+                data: dataIn,
+                "pageLength": 100
+            });    
+            
+            table = dt;
+            
+        }
+    
+    
+        function setitem(id) {
+                        
+            objectsdb.forEach(e => {
+                
+                if ( e['Id'] === id ) {
+                    document.getElementById("idkey").value = id;
+                    $('#json-renderer').jsonViewer(e);
+                    
+                    editor.session.setValue(JSON.stringify(e, null, '    '));
+
+                    return;
+                }
+                
+            });
+                            
+        }
+    
+        // b is any base64 character ('A' to 'Z', 'a' to 'z', '0' to '9', +, /, =)
+        function base64chartobyte(b) {
+            let j = b.charCodeAt(0);
+    
+            if ( b === '+' ) {
+                j = 62;  
+            } else if ( b === '/' ) {
+                j = 63; 
+            } else if ( ( j - 'A'.charCodeAt(0) <= 25 ) && ( j - 'A'.charCodeAt(0) >= 0 ) ) {
+                j = 0 + j - 'A'.charCodeAt(0);
+            } else if ( ( j - 'a'.charCodeAt(0) <= 25) &&  ( j - 'a'.charCodeAt(0) >= 0) ) {
+                j = 26 + j - 'a'.charCodeAt(0);
+            } else if ( j - '0'.charCodeAt(0) <= 9) {
+                j = 52 + j - '0'.charCodeAt(0);  
+            } else
+                return -1;
+                
+            return j;
+        }
+    
+        // d is a 6-bit integer
+        function numtobase64(d) {
+            if ( d >= 0 && d <= 25 ) {
+                return String.fromCharCode('A'.charCodeAt(0)+d);
+            } else if ( d >= 26 && d <= 51 ) {
+                return String.fromCharCode('a'.charCodeAt(0)+d-26);
+            } else if ( d >= 52 && d <= 61 ) {
+                return String.fromCharCode('0'.charCodeAt(0)+d-52);
+            } else if ( d === 62 ) {
+                return '+';
+            } else if ( d === 63 ) {
+                return '/';
+            }
+            
+            return '';
+        }
+    
+        function base64tobytearr(base64str) {
+    
+            let numpads = 0;
+            while ( base64str[base64str.length - numpads - 1] === '=' ) {
+                numpads++;
+            }
+    
+            let k = 0;
+            let x = 0,y=0,z=0;
+            let byteArr = [];
+            
+            for (let i = 0; i<base64str.length; i++) {
+                
+                let j = base64chartobyte(base64str[i]);
+                
+                if ( base64str[i] === '=' ) {
+                    
+                    if ( numpads == 2 ) {
+                        byteArr.push(x);
+                    } else {
+                        byteArr.push(x);
+                        byteArr.push(y);
+                    } 
+    
+                    return byteArr;          
+                }
+                
+                if ( j === -1 ) {
+                    console.log('base64tobytearr :: major fault');
+                    return null;
+                }
+    
+                if ( k === 0 )
+                    x = j;
+                else if ( k === 1 ) {
+                    x = (x<<2) + ((j & 0b110000)>>4);
+                    y = (j & 0b1111);
+                } else if ( k === 2 ) {
+                    y = (y<<4) + ((j & 0b111100) >> 2)
+                    z = (j & 0b000011);
+                } else if ( k === 3 ) {
+                    k = 0;
+                    
+                    z = (z<<6) +j
+    
+                    byteArr.push(x);
+                    byteArr.push(y);
+                    byteArr.push(z);
+                    
+                    continue;
+                }
+                
+                k++;
+            }
+            
+            return byteArr;
+        }
+    
+        function bytearrtobase64(byteArr) {
+            
+            if ( ! Array.isArray(byteArr) )
+                return '';
+                
+            let a=0, b=0, c=0, d=0;
+            let x=0,y=0,z=0;
+            let base64str = '';
+            
+            let i = 0;
+            
+            while ( i < byteArr.length ) {
+                x = byteArr[i++];
+                
+                a = ( x & 0b11111100 ) >> 2;
+                
+                base64str += numtobase64(a);
+                
+                if ( i < byteArr.length )
+                    y = byteArr[i++];
+                else {
+                    b = ((x & 0b00000011)<<4)
+                    base64str += numtobase64(b);
+                    base64str +='==';
+                    return base64str;
+                }
+                
+                b = ((x & 0b00000011)<<4) + ((y&0b11110000) >> 4);
+                
+                base64str += numtobase64(b);
+                
+                if ( i < byteArr.length )
+                    z = byteArr[i++];
+                else {
+                    c = ((y&0b00001111)<<2);
+                    base64str += numtobase64(c);
+                    base64str +='=';
+                    return base64str;
+                }
+                
+                c = ((y&0b00001111)<<2) + ((0b11000000 & z)>>6);
+                d = 0b00111111 & z;
+                
+                base64str += numtobase64(c);
+                base64str += numtobase64(d);
+            }
+            
+            return base64str;
+        }
+    
+        function printbytearr(byteArr) {
+                
+            let k = 0;
+            let linestr = '';
+            for (let i = 0; i<byteArr.length; i++) {
+                let n = (byteArr[k++]).toString(16); 
+                n = '00'.substr(n.length) + n
+                linestr += ' ' + n
+            }
+            
+            console.log(linestr);
+        }
+
+        async function retrieveFileNames() {
+            console.log('executing retrieveFileNames');
+
+            // makeHTTPRequest -- url, action, headers, body, loggerfn
+            let url = 'https://testdev2375.azurewebsites.net/api/httpTriggerDevTestC';
+
+            let headers = [];
+            headers.push({ key:"Accept", value:"*/*" });
+            headers.push({ key:"Content-Type", value:"application/json" });
+            headers.push({ key:"x-functions-key", value:"rs4XNouXUeQavyDOGG22_GqFRhlANOgQwkQC2MIvJFDMAzFuPAr6eA==" });
+
+            let response = await makeHTTPRequest(url, 'GET', headers, null, console.log);
+
+            return response;
+        }
+
+        var filenames = [];
+        var objectsdb = [];
+
+        function retrieve() {
+            retrieveAsync().then(() => {
+                setdata(objectsdb);
+            });
+        }
+
+        async function retrieveAsync() {
+            let key = parseInt(document.querySelector('#key').value);
+
+            let response = await retrieveFileNames();
+
+            let fnames = JSON.parse(response);
+            filenames = fnames;
+
+            for ( let i = 0; i<fnames.length;i++) {
+                let item = fnames[i];
+
+                let response = null;
+                let objstr = null;
+                let obj = null;
+
+                try {
+                    response = await downloadFile(item.fname);
+                    
+                    console.log('fname: '+item.fname+' response: '+response.substring(0,10));
+
+                    objstr = decode(response, key);
+                    obj = JSON.parse(objstr);
+                    objectsdb.push(obj);
+
+                } catch (e) {
+                    console.log('retrieveAsync: exception: '+e.toString());
+                }
+
+            }
+                
+        }
+
+        async function downloadFile(fname) {
+            console.log('executing downloadFile: fname: '+fname);
+    
+            let url = "https://testdev2375.azurewebsites.net/api/httpTriggerDevTestD?fname="+fname;
+            let headers = [];
+            headers.push( { key:"Accept", value:"*/*" } );
+            headers.push( { key:"Content-Type", value:"application/json"} );
+            headers.push( { key:"x-functions-key", value:"QeoicUb2rAWrbONtomrhsJxK8nU1S6jSYLHHfaq0nRvlAzFuy5lAIw=="} );
+            
+            let response = await makeHTTPRequest(url, 'GET', headers, null, console.log);
+
+            return response;
+        }
+    
+    </script>
+
+</body>
+
+</html>

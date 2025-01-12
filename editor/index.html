@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html>
+    <head >
+        <title></title>
+        <meta http-equiv="content-type" content="text/html; charset=utf-8" >
+        <meta name="robots" content="noarchive">
+        <link rel="stylesheet" href="https://cdn.datatables.net/2.1.8/css/dataTables.dataTables.css" />
+        <script src="https://code.jquery.com/jquery-3.7.1.js" integrity="sha256-eKhayi8LEQwp4NKxN+CfCh+3qOVUtJn3QNZ0TciWLP4=" crossorigin="anonymous"></script>
+        <link href="../json_viewer/jquery.json-viewer.css" type="text/css" rel="stylesheet">
+        <script src="../json_viewer/jquery.json-viewer.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/ace-builds@1.36.3/src/ace.js" type="text/javascript" charset="utf-8"></script>
+        <script src="https://cdn.jsdelivr.net/npm/ace-builds@1.36.3/src-noconflict/theme-tomorrow_night.min.js"></script>
+        <link href="https://cdn.jsdelivr.net/npm/ace-builds@1.36.3/css/ace.min.css" rel="stylesheet">
+        <script src="utility.js"></script>
+
+        <style>
+          .hoverTable tr:hover {
+                background-color: #ffff99;
+          }
+      </style>
+
+    </head>
+
+    <body>
+        <div>
+            <pre>[ <a href="../index.html">Object Browser</a> | Editor ]</pre>
+        </div>
+        <table style="font-family: Courier, monospace; width: auto;" >
+            <tr>
+                <td>
+                    <label for="themes">Theme:</label>
+                    <select name="themes" id="themes" onchange="setTheme(this.value); return false;">
+                        <option value="chrome">chrome</option>
+                        <option value="clouds">clouds</option>
+                        <option value="crimson_editor">crimson_editor</option>
+                        <option value="dawn">dawn</option>
+                        <option value="dreamweaver">dreamweaver</option>
+                        <option value="eclipse">eclipse</option>
+                        <option value="github">github</option>
+                        <option value="iplastic">iplastic</option>
+                        <option value="katzenmilch">katzenmilch</option>
+                        <option value="kuroir">kuroir</option>
+                        <option value="solarized_light">solarized_light</option>
+                        <option value="sqlserver">sqlserver</option>
+                        <option value="textmate">textmate</option>
+                        <option value="tomorrow">tomorrow</option>
+                        <option value="xcode">xcode</option>
+                        <option value="ambiance">ambiance</option>
+                        <option value="chaos">chaos</option>
+                        <option value="clouds_midnight">clouds_midnight</option>
+                        <option value="cobalt">cobalt</option>
+                        <option value="dracula">dracula</option>
+                        <option value="gob">gob</option>
+                        <option value="gruvbox">gruvbox</option>
+                        <option value="idle_fingers">idle_fingers</option>
+                        <option value="kr_theme">kr_theme</option>
+                        <option value="merbivore">merbivore</option>
+                        <option value="merbivore_soft">merbivore_soft</option>
+                        <option value="mono_industrial">mono_industrial</option>
+                        <option value="monokai">monokai</option>
+                        <option value="pastel_on_dark">pastel_on_dark</option>
+                        <option value="solarized_dark">solarized_dark</option>
+                        <option value="terminal">terminal</option>
+                        <option value="tomorrow_night">tomorrow_night</option>
+                        <option value="tomorrow_night_blue">tomorrow_night_blue</option>
+                        <option value="tomorrow_night_bright">tomorrow_night_bright</option>
+                        <option value="tomorrow_night_eighties">tomorrow_night_eighties</option>
+                        <option value="twilight">twilight</option>
+                        <option value="vibrant_ink">vibrant_ink</option>
+                    </select>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    Rendering Format:
+                </td>
+                <td><b>[ HTML | XML | YAML | CSV | BINARY | 
+                    <a href="#" onclick='setMode("json"); return false;'>JSON</a> | <a href="#" onclick='setMode("text"); return false;'>TEXT</a> ]</b></td>
+            </tr>
+        </table>
+        <table style="font-family: Courier, monospace; width: auto;" >
+            <tr>
+                <td>Filename:</td>
+                <td>
+                    <input type="text" id="fname" name="fname" maxlength="25" size="25" onchange="updateFileName(this); return false;"></input>
+                </td>
+                <td>
+                    <input type="button" onclick="genfilename(); return null;" id="genfilename" name="fname" value="Generate"></input>
+                </td>
+                <td>
+                    <input type="button" onclick="saveFile(); return false;" value="Save File"></input>
+                </td>
+            </tr>
+        </table>
+
+        <br/>
+
+        <div id="files" style="font-family: Courier, monospace; width: auto;">
+        </div>
+
+        <br/>
+
+        <div><pre id="oldfname" style="font-family: Courier, monospace; width: auto;"></pre></div>
+
+        <div id="editor" onchange="logme(); return false;"></div>
+
+        <script>
+            (function() {
+                document.addEventListener('keydown', e => {
+                    if (e.ctrlKey && e.key === 's') {
+                        // Prevent the Save dialog to open
+                        e.preventDefault();
+
+                        // Place your code here
+                        console.log('CTRL + S');
+                    }
+                });
+
+            })();
+        </script>
+
+        <script>
+            var fname = genfilename();
+            var oldfname = null;
+            var text = null;
+            var fnames = null;
+
+            function updatedir() {
+                retrieveFileNames().then(res=>{
+                    console.log('response: '+res);
+                    fnames = JSON.parse(res);
+
+                    headers = ['Filename(s)'];
+
+                    let table = '<table class="hoverTable"><thead><tr>';
+                    headers.forEach(header => table += `<th>${header}</th>`);
+                    table += '</tr></thead><tbody>';
+
+                    fnames.forEach(fname => {
+                        table += '<tr>';
+                        headers.forEach(header => table += `<td><a href="#" onclick='setFile("${fname}"); return false;'>${fname}</a></td>`);
+                        table += '</tr>';
+                    });
+
+                    table += '</tbody></table>';
+
+                    document.getElementById("files").innerHTML = table;
+                });
+            }
+
+            updatedir();
+
+            function updateFileName(e) {
+                let elem = document.getElementById('fname');
+
+                fname = e ? e.value : elem.value;
+            }
+
+            function updateOldFileName(fnamestr) {
+                oldfname = fnamestr;
+                document.getElementById('oldfname').innerText = oldfname;
+            }
+
+            async function downloadNote(fname) {
+                console.log('executing downloadNote: fname: '+fname);
+        
+                let url = "https://testdev2375.azurewebsites.net/api/httpTriggerDevTestD?fname="+fname+"&dirname=Notes";
+                let headers = [];
+                headers.push( { key:"Accept", value:"*/*" } );
+                headers.push( { key:"Content-Type", value:"application/json"} );
+                headers.push( { key:"x-functions-key", value:"QeoicUb2rAWrbONtomrhsJxK8nU1S6jSYLHHfaq0nRvlAzFuy5lAIw=="} );
+                
+                let response = await makeHTTPRequest(url, 'GET', headers, null, console.log);
+
+                updateOldFileName(fname);
+
+                return response;
+            }
+    
+        
+            function setFile(fname) {
+                console.log('setFile: '+fname);
+
+                downloadNote(fname).then(response => {
+                    // console.log(response);
+                    editor.getSession().setValue(response);
+                    editor.getSession().clearSelection();
+
+                });
+            }
+
+            async function retrieveFileNames() {
+                console.log('executing retrieveFileNames');
+
+                // makeHTTPRequest -- url, action, headers, body, loggerfn
+                let url = 'https://testdev2375.azurewebsites.net/api/httpTriggerDevTestC?dirname=Notes';
+
+                let headers = [];
+                headers.push({ key:"Accept", value:"*/*" });
+                headers.push({ key:"Content-Type", value:"application/json" });
+                headers.push({ key:"x-functions-key", value:"rs4XNouXUeQavyDOGG22_GqFRhlANOgQwkQC2MIvJFDMAzFuPAr6eA==" });
+
+                let response = await makeHTTPRequest(url, 'GET', headers, null, console.log);
+
+                return response;
+            }
+
+            function genfilename() {
+                var e = document.getElementById("fname");
+                
+                function pad2(n) { return n < 10 ? '0' + n : n }
+
+                var date = new Date();
+                
+                date = date.getFullYear().toString() + pad2(date.getMonth() + 1) + pad2( date.getDate()) + pad2( date.getHours() ) + pad2( date.getMinutes() ) + pad2( date.getSeconds() );
+
+                return ( e.value = fname = 'new_note_'+date+'.txt' );
+            }
+
+            var editor = ace.edit("editor", {
+                //theme: "ace/theme/tomorrow_night_eighties",
+                theme: "ace/theme/twilight",
+                mode: "ace/mode/text",
+                maxLines: 30,
+                wrap: true,
+                autoScrollEditorIntoView: true
+            });
+
+            function setMode(mode) {
+                console.log('mode: '+mode);
+                // var editor = ace.edit("editor");
+                // ace/mode/javascript
+                editor.getSession().setMode('ace/mode/'+mode); //"ace/mode/json");
+            }
+
+            function setTheme(theme) {
+                console.log('theme: '+theme);
+                editor.setTheme('ace/theme/'+theme);
+            }
+
+            function updatebody() {
+                text = editor.getSession().getValue(); // e.innerText;
+            }
+
+            function logme() {
+                var e = document.getElementById("editor");
+                
+                // console.log(e.innerText);
+                // text = editor.getSession().getValue(); // e.innerText;
+                updatebody();
+            }
+
+            function saveFile() {
+
+                if ( ! fname )
+                    fname = genfilename();
+
+                updatebody();
+
+                saveFileAsync().then(response =>{
+                    console.log('uploadNote: '+JSON.stringify(response));
+
+                    updatedir();
+                });
+
+            }
+
+            async function saveFileAsync() {
+
+                if ( ! fname )
+                    fname = genfilename();
+
+                return await uploadNote(fname,text);
+            }
+
+        </script>
+
+    </body>
+</html>
